@@ -6,31 +6,27 @@ import os
 import os.path
 import subprocess
 import sys
+from tempfile import NamedTemporaryFile
+
+def get_branch_commits(repo, branch_names):
+	if len(branch_names):
+		# try to take the specified branches
+		branch_commits = []
+		for iarg in branch_names:
+			try:
+				icommit = repo.commit(iarg)
+				branch_commits.append(icommit)
+			except git.BadName as exc:
+				pass
+		return branch_commits
+	# fallback -> take all branches
+	return [ibranch.commit for ibranch in repo.branches]
 
 
-def main():
-	try:
-		repo = git.Repo(search_parent_directories=True)
-	except TypeError:
-		repo = git.Repo()
-
-	def get_heads():
-		if len(sys.argv) > 1:
-			# try to take the specified branches
-			heads = []
-			for iarg in sys.argv[1:]:
-				try:
-					icommit = repo.commit(iarg)
-					heads.append(icommit)
-				except git.BadName as exc:
-					pass
-			return heads
-		# fallback -> take all branches
-		return [ibranch.commit for ibranch in repo.branches]
-
+def get_childs_per_commit(branch_commits):
 	# iterate through whole commit tree and find branching points
 	childs_per_commit = {}
-	commits = get_heads()
+	commits = list(branch_commits)
 	while commits:
 		icommit = commits.pop(0)
 		for iparent in icommit.parents:
@@ -39,54 +35,91 @@ def main():
 			commits.append(iparent)
 	for k in childs_per_commit.iterkeys():
 		childs_per_commit[k] = len(childs_per_commit[k])
+	return childs_per_commit
 
-	branches = set([i.hexsha for i in get_heads()])
 
-	def find_last_commit_of_sub_branch(commit):
+def find_last_commit_of_sub_branch(branch_hexshas, childs_per_commit, commit):
+	if not commit.parents:
+		return (commit, 1)
+	last_commit = commit
+	commit = commit.parents[0]
+	n = 1
+	while True:
+		# break conditions
+		if commit.hexsha in branch_hexshas:
+			return (last_commit, n)
 		if not commit.parents:
-			return (commit, 1)
+			return (commit, n + 1)
+		if childs_per_commit[commit.hexsha] != 1:
+			return (last_commit, n)
+
+		# go to next commit in the past
+		n += 1
 		last_commit = commit
 		commit = commit.parents[0]
-		n = 1
-		while True:
-			# break conditions
-			if commit.hexsha in branches:
-				return (last_commit, n)
-			if not commit.parents:
-				return (commit, n + 1)
-			if childs_per_commit[commit.hexsha] != 1:
-				return (last_commit, n)
 
-			# go to next commit in the past
-			n += 1
-			last_commit = commit
-			commit = commit.parents[0]
+
+def create_graphviz_file(branch_names):
+	try:
+		repo = git.Repo(search_parent_directories=True)
+	except TypeError:
+		repo = git.Repo()
 
 	# iterate over all sub branches and print graphviz representation
-	commits = get_heads()
-	commits_visited = set()
+	branch_commits = get_branch_commits(repo, branch_names)
+	branch_hexshas = set([i.hexsha for i in branch_commits]) 
+	childs_per_commit = get_childs_per_commit(branch_commits)
 	vertices_added = set()
-	print 'digraph G {'
-	for icommit in commits:
-		while icommit.parents and icommit not in commits_visited:
-			last_commit, n = find_last_commit_of_sub_branch(icommit)
-			isha, iname = icommit.name_rev.split()
-			print '"{sha}"[label="{label} [{num}]"];'.format(sha=isha, label=iname, num=n)
-			if last_commit.parents:
-				iparent = last_commit.parents[0]
-				vertex = (isha, iparent.hexsha)
-				if vertex not in vertices_added:
-					print '"{current}"->"{parent}";'.format(current=isha, parent=iparent.hexsha)
-					vertices_added.add(vertex)
-				icommit = iparent
-			else:
-				break
-	print '}'
+	with NamedTemporaryFile(delete=False) as fp:
+		fp.write('digraph G {\n')
+		for icommit in branch_commits:
+			while icommit.parents:
+				last_commit, n = find_last_commit_of_sub_branch(branch_hexshas, childs_per_commit, icommit)
+				isha, iname = icommit.name_rev.split()
+				fp.write('"{sha}"[label="{label} [{num}]"];\n'.format(sha=isha, label=iname, num=n))
+				if last_commit.parents:
+					iparent = last_commit.parents[0]
+					vertex = (isha, iparent.hexsha)
+					if vertex not in vertices_added:
+						fp.write('"{current}"->"{parent}";\n'.format(current=isha, parent=iparent.hexsha))
+						vertices_added.add(vertex)
+					icommit = iparent
+				else:
+					break
+		fp.write('}\n')
+	return fp.name
+
+
+def plot_svg_file(in_file, out_file):
+	subprocess.call(['dot', '-Tsvg', '-o%s' % (out_file, ), in_file])
+
+
+def main(out_file, branches):
+	graphviz_file = create_graphviz_file(branches)
+	plot_svg_file(graphviz_file, out_file)
+	os.unlink(graphviz_file)
+
+
+def usage():
+	print
+	print 'usage: %s <svgOutputFile> [<branch1> ...]' % (os.path.basename(sys.argv[0]), )
+	print
+	print 'Creates a compact visual representation of the branches in the Git repository.'
+	print 'Linear commits are represented as one node in a graph in order to improve'
+	print 'the readability the basic tree structure of a more complex git project.'
+	print 'If no branches are specified, all branches of the repository are plotted.'
+	print
+	print 'Graphviz is needed as dependency. The output format is SVG.'
+	print
+
 
 if __name__ == '__main__':
-	if '-h' in sys.argv or '--help' in sys.argv:
-		print
-		print 'usage: %s [<branch1> ...]' % (os.path.basename(sys.argv[0]), )
-		print
+	wrong_args = len(sys.argv) < 2
+	print_usage = '-h' in sys.argv or '--help' in sys.argv
+	if print_usage or wrong_args:
+		usage()
+		if wrong_args:
+			sys.exit(1)
 		sys.exit(0)
-	main()
+		
+	main(sys.argv[1], sys.argv[2:])
