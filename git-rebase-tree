@@ -1,0 +1,170 @@
+#!/usr/bin/python
+
+import git
+import re
+import os
+import os.path
+import subprocess
+import sys
+import time
+
+NULL_HEXSHA = '0000000000000000000000000000000000000000'
+TIMESTAMP = time.strftime("%Y%m%d-%Hh%Mm%Ss",time.localtime())
+
+
+class Branch(object):
+	def __init__(self, name, commits, new_base):
+		self.name = name
+		self.commits = commits
+		self.new_base = new_base
+
+	def __str__(self):
+		return '<Branch "%s" - commits:%d new_base:%s>' % (self.name, len(self.commits), self.new_base)
+		
+	def __repr__(self):
+		return self.__str__()
+
+	@property
+	def backup_name(self):
+		return 'backup/%s/%s' % (TIMESTAMP, self.name)
+
+	@property
+	def is_backup_branch(self):
+		return self.name.startswith('backup/')
+
+	def has_backup_branch(self, repo):
+		try:
+			c = repo.commit(self.backup_name)
+			return True 
+		except git.BadName as err:
+			pass
+		return False
+
+	def create_backup(self, repo):
+		repo.create_head(self.backup_name, self.name)
+		
+	def get_upstream(self, root):
+		'''Returns the upstream references for git rebase.'''
+		if self.commits[-1] != root:
+			# some other branch has already been rebased -> the rebase will be done from the last branching point to the HEAD
+			return '%s~%d' % (self.name, len(self.commits))
+		else:
+			# return None in order make sure that all commits until the root are rebased
+			return None
+
+
+def find_rebased_commit(commit, branch):
+	# find the commit in the given branch according to its date
+	# ... in case it does not exist, we take the commit which happened just before
+
+	for icommit in branch.traverse(ignore_self=False):
+		if icommit.authored_date <= commit.authored_date:
+			break
+	return icommit.name_rev.split()[1]
+	
+
+def update_branch_base(repo, current_branch, branches):
+	# update the new base for each branch
+	# all branches which share the same first commit need to be considered
+	affected_branches = [ibranch for ibranch in branches if ibranch != current_branch and ibranch.commits and ibranch.commits[-1] == current_branch.commits[-1]]
+	for branch in affected_branches:
+		shared_commits = set(branch.commits) & set(current_branch.commits)
+		new_base_orig_branch = '%s~%d' % (current_branch.backup_name, len(current_branch.commits) - len(shared_commits))
+		branch.new_base = find_rebased_commit(repo.commit(new_base_orig_branch), repo.commit(current_branch.name))
+		branch.commits = branch.commits[:-len(shared_commits)]
+
+
+def main(new_base, root, branches_to_be_rebased):
+	try:
+		repo = git.Repo(search_parent_directories=True)
+	except TypeError:
+		repo = git.Repo()
+	
+	# iterate through whole commit tree and find branching points
+	childs_per_commit = {}
+	branches = []
+	repo_branches = repo.branches
+	if branches_to_be_rebased:
+		repo_branches = [ibranch for ibranch in repo.branches if ibranch.name in branches_to_be_rebased]
+	for igit_branch in repo_branches:
+		ibranch = Branch(igit_branch.name, [], new_base)
+		if ibranch.is_backup_branch or ibranch.has_backup_branch(repo):
+			continue
+		 
+		branch_commits = [i.hexsha for i in igit_branch.commit.traverse(ignore_self=False)]
+		try:
+			# remember the commit history from the branch head up to the specified root commit
+			ibranch.commits = branch_commits[:branch_commits.index(root) + 1] 
+			branches.append(ibranch)
+		except ValueError as err:
+			# specified root does not exist in the branch -> branch is not part of the tree
+			pass
+
+	def _cmp_branches(a, b):
+		if len(a.commits) > len(b.commits):
+			return 1
+		if len(a.commits) < len(b.commits):
+			return -1
+		return 0
+
+	print '@@@ All branches: %s' % (branches, )
+	while branches:
+		# process the shortest branches first
+		branches.sort(cmp=_cmp_branches)
+		branch = branches.pop(0)
+		print '@@@ Rebasing branch "%s"' % branch.name
+
+		branch.create_backup(repo)
+		upstream = branch.get_upstream(root) 
+		cmd = ['git', 'rebase', '--force-rebase', '--preserve-merges', '--keep-empty', '-s', 'recursive', '-X', 'theirs', '--onto', branch.new_base]
+		if not upstream:
+			cmd += ['--root', branch.name]
+		else:
+			cmd += [upstream, branch.name]
+		print '@@@   executing: %s' % (cmd, )
+		sys.stdout.flush()
+		env = dict(os.environ)
+		env.update(dict(VISUAL='touch', EDITOR='touch'))
+		while True:
+			if os.path.exists('.git/gc.log'):
+				# clean up repo
+				print '@@@   call "git gc" automatically'
+				subprocess.call(['git', 'gc'])
+				os.unlink('.git/gc.log')
+			ret = subprocess.call(cmd, env=env)
+			if ret == 0:
+				break
+
+			# add all files with mode changes
+			for idiff in repo.index.diff(None):
+				only_mode_change = (idiff.a_blob is None or idiff.a_blob.hexsha == NULL_HEXSHA) and (idiff.b_blob is None or idiff.b_blob.hexsha == NULL_HEXSHA) and not (idiff.deleted_file or idiff.new_file or idiff.renamed) and idiff.a_mode != idiff.b_mode
+				if only_mode_change:
+					subprocess.call(['git', 'add', idiff.a_path])
+
+			# rebase has failed...
+			if not repo.is_dirty() or not repo.index.diff(None):
+				# nothing to do
+				cmd = ['git', 'rebase', '--continue']
+			else:
+				cmd = ['/bin/bash']
+		print '@@@   updating all branch bases'
+		sys.stdout.flush()
+		update_branch_base(repo, branch, branches)
+		print '@@@   updated 	branches: %s' % (branches, )
+
+
+def print_usage():
+	show_help = '-h' in sys.argv or '--help' in sys.argv
+	wrong_args = len(sys.argv) < 3
+	if show_help or wrong_args:
+		print
+		print 'usage: %s [<newBase> <treeRootCommit> [<branch1>...]' % (os.path.basename(sys.argv[0]), )
+		print
+		if wrong_args:
+			sys.exit(1)
+		sys.exit(0)
+
+
+if __name__ == '__main__':
+	print_usage()
+	main(sys.argv[1], sys.argv[2], sys.argv[3:])

@@ -1,0 +1,77 @@
+#!/usr/bin/python
+
+import git
+import re
+import os
+import os.path
+import subprocess
+import sys
+
+
+class Branch(object):
+	def __init__(self, name, repo):
+		self.name = name
+		self.commit = repo.commit(name)
+		self.files = dict([(i.path, i) for i in self.commit.tree.traverse() if i.type == 'blob'])
+
+	@property
+	def paths(self):
+		return self.files.keys()
+
+	def __str__(self):
+		return '<Branch "%s">' % (self.name, )
+		
+	def __repr__(self):
+		return self.__str__()
+
+
+def main(orig_branch_name, dest_branch_name):
+	try:
+		repo = git.Repo(search_parent_directories=True)
+	except TypeError:
+		repo = git.Repo()
+	
+	# iterate through whole commit tree and find branching points
+	orig_branch = Branch(orig_branch_name, repo)
+	dest_branch = Branch(dest_branch_name, repo)
+
+	# delete files that should do not exist in the original branch 
+	rm_files = set(dest_branch.files.iterkeys()) - set(orig_branch.files.iterkeys())
+	for ipath in rm_files:
+		try:
+			print 'removing %s' % (ipath, )
+			os.unlink(ipath)
+		except OSError as err:
+			print '  could not remove %s: %s' % (ipath, err)
+			pass
+	if not rm_files:
+		print 'No file to remove :) .'
+
+	# adjust the file mode if necessary
+	common_paths = set(orig_branch.paths).intersection(set(dest_branch.paths))
+	common_blobs = [(orig_branch.files[ipath], dest_branch.files[ipath]) for ipath in common_paths]
+	chmod_files = [(iblob.path, iblob.mode) for iblob, jblob in common_blobs if iblob.mode != jblob.mode]
+	for ipath, imode in chmod_files:
+		print 'chmod %s -> %o' % (ipath, imode)
+		try:
+			os.chmod(ipath, imode)
+		except OSError as err:
+			print '  could not chmod %s: %s' % (ipath, err)
+			pass
+
+
+def print_usage():
+	show_help = '-h' in sys.argv or '--help' in sys.argv
+	wrong_args = len(sys.argv) != 3
+	if show_help or wrong_args:
+		print
+		print 'usage: %s <origBranch> <destBranch>' % (os.path.basename(sys.argv[0]), )
+		print
+		if wrong_args:
+			sys.exit(1)
+		sys.exit(0)
+
+
+if __name__ == '__main__':
+	print_usage()
+	main(*sys.argv[1:])
