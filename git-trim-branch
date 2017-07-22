@@ -39,10 +39,10 @@ def main(orig_branch_name, dest_branch_name):
 	rm_files = set(dest_branch.files.iterkeys()) - set(orig_branch.files.iterkeys())
 	for ipath in rm_files:
 		try:
-			print 'removing %s' % (ipath, )
+			print 'removing %s' % (ipath.encode('utf-8'), )
 			os.unlink(ipath)
 		except OSError as err:
-			print '  could not remove %s: %s' % (ipath, err)
+			print '  could not remove %s: %s' % (ipath.encode('utf-8'), err)
 			pass
 	if not rm_files:
 		print 'No file to remove :) .'
@@ -52,11 +52,11 @@ def main(orig_branch_name, dest_branch_name):
 	common_blobs = [(orig_branch.files[ipath], dest_branch.files[ipath]) for ipath in common_paths]
 	chmod_files = [(iblob.path, iblob.mode) for iblob, jblob in common_blobs if iblob.mode != jblob.mode]
 	for ipath, imode in chmod_files:
-		print 'chmod %s -> %o' % (ipath, imode)
+		print 'chmod %s -> %o' % (ipath.encode('utf-8'), imode)
 		try:
 			os.chmod(ipath, imode)
 		except OSError as err:
-			print '  could not chmod %s: %s' % (ipath, err)
+			print '  could not chmod %s: %s' % (ipath.encode('utf-8'), err)
 			pass
 
 
