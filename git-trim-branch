@@ -67,6 +67,9 @@ def print_usage():
 		print
 		print 'usage: %s <origBranch> <destBranch>' % (os.path.basename(sys.argv[0]), )
 		print
+		print 'Removes files in <destBranch> that do not exist in <origBranch> and adjust access'
+		print 'rights for files in <destBranch> in order to match permissions in <origBranch>.'
+		print
 		if wrong_args:
 			sys.exit(1)
 		sys.exit(0)
