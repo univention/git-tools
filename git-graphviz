@@ -94,6 +94,8 @@ def create_graphviz_file(branch_names):
 				else:
 					break
 		fp.write('}\n')
+	print
+	print 'Done :)'
 	return fp.name
 
 
