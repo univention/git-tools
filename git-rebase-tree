@@ -158,7 +158,11 @@ def print_usage():
 	wrong_args = len(sys.argv) < 3
 	if show_help or wrong_args:
 		print
-		print 'usage: %s [<newBase> <treeRootCommit> [<branch1>...]' % (os.path.basename(sys.argv[0]), )
+		print 'usage: %s <newBase> <treeRootCommit> [<branch1>...]' % (os.path.basename(sys.argv[0]), )
+		print
+		print 'Recursively rebase a whole subtree with its root at <treeRootCommit> commit to'
+		print 'the new position <newBase>. This will rebase all concerned branches to the new'
+		print 'position, as well. The original branches will be saved as backup branches.'
 		print
 		if wrong_args:
 			sys.exit(1)
