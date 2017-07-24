@@ -130,20 +130,23 @@ function rebase {
 	git checkout -b "$split_branch" "$split_commit"
 
 	# first rebase to figure out which files need to be deleted
-	~/sandbox/git-rebase-tree "$split_branch" "$(get_first_commit "$branch")" "$branch"
+	"$(dirname $0)/git-rebase-tree" "$split_branch" "$(get_first_commit "$branch")" "$branch"
 
 	# remove all files that should not be copied to <branch>.
 	# ... use git ls-tree with option "-z" to avoid encoding problems
 	local backup_branch=$(git branch | sed -n 's/^[\* ]*//g; /backup.*'"$branch"'/p')
 	git checkout "$split_branch"
-	~/sandbox/git-trim-branch "$backup_branch" "$branch"
+	"$(dirname $0)/git-trim-branch" "$backup_branch" "$branch"
 	git commit -a -m "svn2git migration: remove files that have not been branched to $branch"
 
 	# restore original branch and rebase _all_ connected branches
 	git branch -M "$backup_branch" "$branch"
-	~/sandbox/git-rebase-tree "$split_branch" "$(get_first_commit "$branch")" 
+	"$(dirname $0)/git-rebase-tree" "$split_branch" "$(get_first_commit "$branch")" 
 }
 
+
+SVN="$1"
+AUTHORS_FILE="$2"
 
 if [ "$1" = "-i" -o "$1" = "--include" ]
 then
@@ -155,9 +158,6 @@ then
 	help
 	exit 0
 fi
-
-SVN="$1"
-AUTHORS_FILE="$2"
 
 # basic sanity checks
 check_authors_file
