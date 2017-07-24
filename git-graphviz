@@ -67,12 +67,19 @@ def create_graphviz_file(branch_names):
 
 	# iterate over all sub branches and print graphviz representation
 	branch_commits = get_branch_commits(repo, branch_names)
-	branch_hexshas = set([i.hexsha for i in branch_commits]) 
+	print 'Found %d branch(es) to plot.' % (len(branch_commits), )
+	branch_hexshas = set([i.hexsha for i in branch_commits])
+	print 'Detecting branching points (that might take a moment)...' 
 	childs_per_commit = get_childs_per_commit(branch_commits)
 	vertices_added = set()
+	print 'Iterating through branches and their commits...'
+	istep = 0
 	with NamedTemporaryFile(delete=False) as fp:
 		fp.write('digraph G {\n')
 		for icommit in branch_commits:
+			sys.stdout.write('\r(Branch %d/%d)' % (istep, len(branch_commits)))
+			sys.stdout.flush()
+			istep += 1
 			while icommit.parents:
 				last_commit, n = find_last_commit_of_sub_branch(branch_hexshas, childs_per_commit, icommit)
 				isha, iname = icommit.name_rev.split()
