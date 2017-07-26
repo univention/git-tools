@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import git
+import gitdb
 import re
 import os
 import os.path
@@ -36,7 +37,7 @@ class Branch(object):
 		try:
 			c = repo.commit(self.backup_name)
 			return True 
-		except git.BadName as err:
+		except (git.BadName, gitdb.exc.BadObject) as err:
 			pass
 		return False
 
@@ -88,7 +89,9 @@ def main(new_base, root, branches_to_be_rebased):
 		repo_branches = [ibranch for ibranch in repo.branches if ibranch.name in branches_to_be_rebased]
 	for igit_branch in repo_branches:
 		ibranch = Branch(igit_branch.name, [], new_base)
-		if ibranch.is_backup_branch or ibranch.has_backup_branch(repo):
+		# ignore backup branches, branches including '@' (kind of intermediate
+		# branches created by git-svn), and branches that are already backed up 
+		if ibranch.is_backup_branch or '@' in ibranch.name or ibranch.has_backup_branch(repo):
 			continue
 		 
 		branch_commits = [i.hexsha for i in igit_branch.commit.traverse(ignore_self=False)]
