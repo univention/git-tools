@@ -68,3 +68,5 @@ rebase ucs-3.2-0 ucs-3.1-2 41107
 rebase ucs-3.2-2 ucs-3.2-1 49765
 rebase ucs-4.0-0 ucs-3.2-2 51102
 
+rewrite_commits_with_author_info
+

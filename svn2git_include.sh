@@ -124,3 +124,8 @@ function rebase {
 	"$(dirname $0)/git-rebase-tree" "$split_branch" "$(get_first_commit "$branch")" 
 }
 
+function rewrite_commits_with_author_info {
+	branches=($(git branch -a | sed 's/^[ \*]*//; /backup/d'))
+	git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"; export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"; export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"' "${branches[@]}"
+}
+
