@@ -85,8 +85,8 @@ function create_local_branches {
 		let i+=2
 	done
 
-	# create branches
-	git branch -a | "${cmd[@]}" | (
+	# create copies of SVN branches, but ignore branches containing the character '@'
+	git branch -a | "${cmd[@]}" | grep -v '@' | (
 		while read remote_branch
 		do
 			local_branch=${remote_branch##*/}
