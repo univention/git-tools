@@ -8,7 +8,7 @@ function help {
  	echo "$(basename $0) [options] <svnRepo> <authorsFile>"
 	echo
 	echo "<svnRepo>        Path to the Univention SVN dev repository"
-	echo "<authorsFile>    Path to the SVN authors file in order to porperly map usernames"
+	echo "<authorsFile>    Path to the SVN authors file in order to properly map usernames"
 	echo "                 to real author names."
 	echo  
 	echo "Options:"
