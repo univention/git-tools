@@ -132,8 +132,10 @@ def main(new_base, root, branches_to_be_rebased):
 				print '@@@   call "git gc" automatically'
 				subprocess.call(['git', 'gc'])
 				os.unlink('.git/gc.log')
+			print '@@@ call %s' % (cmd,)
 			ret = subprocess.call(cmd, env=env)
 			if ret == 0:
+				print '@@@ success'
 				break
 
 			# add all files with mode changes
@@ -147,6 +149,7 @@ def main(new_base, root, branches_to_be_rebased):
 				# nothing to do
 				cmd = ['git', 'rebase', '--continue']
 			else:
+				# manual interaction required
 				cmd = ['/bin/bash']
 		print '@@@   updating all branch bases'
 		sys.stdout.flush()
