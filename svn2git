@@ -5,7 +5,7 @@ source $(dirname "$0")/svn2git_include.sh
 
 function help {
 	echo
- 	echo "$(basename $0) [options] <svnRepo> <authorsFile>"
+ 	echo "$(basename $0) [options] <svnRepo> <authorsFile> 2>&1 | tee git2svn.log"
 	echo
 	echo "<svnRepo>        Path to the Univention SVN dev repository"
 	echo "<authorsFile>    Path to the SVN authors file in order to properly map usernames"
