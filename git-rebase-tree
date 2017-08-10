@@ -2,7 +2,6 @@
 
 import git
 import gitdb
-import re
 import os
 import os.path
 import subprocess
@@ -10,7 +9,7 @@ import sys
 import time
 
 NULL_HEXSHA = '0000000000000000000000000000000000000000'
-TIMESTAMP = time.strftime("%Y%m%d-%Hh%Mm%Ss",time.localtime())
+TIMESTAMP = time.strftime("%Y%m%d-%Hh%Mm%Ss", time.localtime())
 
 
 class Branch(object):
@@ -21,7 +20,7 @@ class Branch(object):
 
 	def __str__(self):
 		return '<Branch "%s" - commits:%d new_base:%s>' % (self.name, len(self.commits), self.new_base)
-		
+
 	def __repr__(self):
 		return self.__str__()
 
@@ -35,15 +34,15 @@ class Branch(object):
 
 	def has_backup_branch(self, repo):
 		try:
-			c = repo.commit(self.backup_name)
-			return True 
-		except (git.BadName, gitdb.exc.BadObject) as err:
+			repo.commit(self.backup_name)
+			return True
+		except (git.BadName, gitdb.exc.BadObject):
 			pass
 		return False
 
 	def create_backup(self, repo):
 		repo.create_head(self.backup_name, self.name)
-		
+
 	def get_upstream(self, root):
 		'''Returns the upstream references for git rebase.'''
 		if self.commits[-1] != root:
@@ -62,7 +61,7 @@ def find_rebased_commit(commit, branch):
 		if icommit.authored_date <= commit.authored_date:
 			break
 	return icommit.name_rev.split()[1]
-	
+
 
 def update_branch_base(repo, current_branch, branches):
 	# update the new base for each branch
@@ -80,9 +79,8 @@ def main(new_base, root, branches_to_be_rebased):
 		repo = git.Repo(search_parent_directories=True)
 	except TypeError:
 		repo = git.Repo()
-	
+
 	# iterate through whole commit tree and find branching points
-	childs_per_commit = {}
 	branches = []
 	repo_branches = repo.branches
 	if branches_to_be_rebased:
@@ -90,16 +88,16 @@ def main(new_base, root, branches_to_be_rebased):
 	for igit_branch in repo_branches:
 		ibranch = Branch(igit_branch.name, [], new_base)
 		# ignore backup branches, branches including '@' (kind of intermediate
-		# branches created by git-svn), and branches that are already backed up 
+		# branches created by git-svn), and branches that are already backed up
 		if ibranch.is_backup_branch or '@' in ibranch.name or ibranch.has_backup_branch(repo):
 			continue
-		 
+
 		branch_commits = [i.hexsha for i in igit_branch.commit.traverse(ignore_self=False)]
 		try:
 			# remember the commit history from the branch head up to the specified root commit
-			ibranch.commits = branch_commits[:branch_commits.index(root) + 1] 
+			ibranch.commits = branch_commits[:branch_commits.index(root) + 1]
 			branches.append(ibranch)
-		except ValueError as err:
+		except ValueError:
 			# specified root does not exist in the branch -> branch is not part of the tree
 			pass
 
@@ -118,7 +116,7 @@ def main(new_base, root, branches_to_be_rebased):
 		print '@@@ Rebasing branch "%s"' % branch.name
 
 		branch.create_backup(repo)
-		upstream = branch.get_upstream(root) 
+		upstream = branch.get_upstream(root)
 		cmd = ['git', 'rebase', '--force-rebase', '--preserve-merges', '--keep-empty', '-s', 'recursive', '-X', 'theirs', '--onto', branch.new_base]
 		if not upstream:
 			cmd += ['--root', branch.name]
