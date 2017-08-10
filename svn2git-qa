@@ -1,0 +1,50 @@
+#!/usr/bin/python
+# compare the HEAD of each branch with the svn state
+
+import git
+import os
+from subprocess import check_call, check_output, PIPE, STDOUT, Popen
+
+EXPORTS = '../exports'
+
+
+def checkout(branch):
+	check_call(['git', 'checkout', branch])
+
+
+def url():
+	x = check_output(['git', 'svn', 'info'])
+	return [y.split('URL: ', 1)[-1] for y in x.splitlines() if y.startswith('URL: ')][0]
+
+
+def svn_export(url, target):
+	target = os.path.join(EXPORTS, target)
+	if not os.path.exists(target):
+		check_call(['svn', 'export', url, target])
+
+
+def diff(target):
+	# TODO: git can't have empty directories; they are detected as differing
+	p = Popen(['diff', '-u', '-r', '--exclude', '.git', '.', os.path.join(EXPORTS, target)], stderr=STDOUT, stdout=PIPE)
+	stdout = p.communicate()[0]
+	if p.returncode:
+		return stdout
+
+
+def main():
+	if not os.path.exists(EXPORTS):
+		os.makedirs(EXPORTS)
+
+	repo = git.Repo()
+	for branch in repo.branches:
+		if branch.name in ('master', 'trunk', 'ucsschool', 'ucs') or 'split' in branch.name:
+			continue
+		checkout(branch.name)
+		svn_export(url(), branch.name)
+		changes = diff(branch.name)
+		if changes:
+			print '### branch %s differs:\n%s\n##################' % (branch.name, changes)
+
+
+if __name__ == '__main__':
+	main()
