@@ -138,18 +138,27 @@ def main(new_base, root, branches_to_be_rebased):
 				print '@@@ success'
 				break
 
-			# add all files with mode changes
+			# rebase has failed...
+			cmd = ['git', 'rebase', '--continue']
+
+			if not repo.is_dirty():
+				# there are no changes being staged → force empty commit to keep history
+				subprocess.call(['git', 'commit', '--allow-empty'], env=env)
+				continue
+
+			# resolve conflicting files
 			for idiff in repo.index.diff(None):
 				only_mode_change = (idiff.a_blob is None or idiff.a_blob.hexsha == NULL_HEXSHA) and (idiff.b_blob is None or idiff.b_blob.hexsha == NULL_HEXSHA) and not (idiff.deleted_file or idiff.new_file or idiff.renamed) and idiff.a_mode != idiff.b_mode
 				if only_mode_change:
+					subprocess.call(['git', 'checkout', '--theirs', idiff.a_path])
 					subprocess.call(['git', 'add', idiff.a_path])
+				elif idiff.deleted_file:
+					subprocess.call(['git', 'rm', idiff.a_path])
+				else:
+					subprocess.call(['git', 'add', idiff.b_path])
 
-			# rebase has failed...
-			if not repo.is_dirty() or not repo.index.diff(None):
-				# nothing to do
-				cmd = ['git', 'rebase', '--continue']
-			else:
-				# manual interaction required
+			if repo.index.diff(None):
+				# manual interaction required, should not occur
 				cmd = ['/bin/bash']
 		print '@@@   updating all branch bases'
 		sys.stdout.flush()
