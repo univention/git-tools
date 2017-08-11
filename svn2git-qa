@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # compare the HEAD of each branch with the svn state
+# git branch | grep backup | while read ibak; do ibranch=${ibak##*/}; echo "### $ibak $ibranch ###"; git diff --numstat $ibak $ibranch; done | less
 
 import git
 import os
@@ -8,11 +9,12 @@ from subprocess import check_call, check_output, PIPE, STDOUT, Popen
 EXPORTS = '../exports'
 
 
-def checkout(branch):
-	check_call(['git', 'checkout', branch])
+def checkout(branch, **kwargs):
+	check_call(['git', 'checkout', branch], **kwargs)
 
 
-def url():
+def url(branch):
+	checkout('remotes/svn/%s' % (branch,), stdout=PIPE, stderr=PIPE)
 	x = check_output(['git', 'svn', 'info'])
 	return [y.split('URL: ', 1)[-1] for y in x.splitlines() if y.startswith('URL: ')][0]
 
@@ -39,8 +41,9 @@ def main():
 	for branch in repo.branches:
 		if branch.name in ('master', 'trunk', 'ucsschool', 'ucs') or 'split' in branch.name or 'backup' in branch.name:
 			continue
+		uri = url(branch.name)
+		svn_export(uri, branch.name)
 		checkout(branch.name)
-		svn_export(url(), branch.name)
 		changes = diff(branch.name)
 		if changes:
 			print '### branch %s differs:\n%s\n##################' % (branch.name, changes)
