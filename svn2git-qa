@@ -4,7 +4,7 @@
 
 import git
 import os
-from subprocess import check_call, check_output, PIPE, STDOUT, Popen
+from subprocess import check_call, check_output, PIPE, STDOUT, Popen, CalledProcessError
 
 EXPORTS = '../exports'
 
@@ -16,13 +16,19 @@ def checkout(branch, **kwargs):
 def url(branch):
 	checkout('remotes/svn/%s' % (branch,), stdout=PIPE, stderr=PIPE)
 	x = check_output(['git', 'svn', 'info'])
-	return [y.split('URL: ', 1)[-1] for y in x.splitlines() if y.startswith('URL: ')][0]
+
+	def getfield(field):
+		return [y.split(field, 1)[-1] for y in x.splitlines() if y.startswith(field)][0].strip()
+	return (getfield('URL: '), int(getfield('Last Changed Rev: ')))
 
 
-def svn_export(url, target):
+def svn_export(url, target, revision):
 	target = os.path.join(EXPORTS, target)
 	if not os.path.exists(target):
-		check_call(['svn', 'export', url, target])
+		try:
+			check_call(['svn', 'export', url, target])
+		except CalledProcessError:
+			check_call(['svn', 'export', '%s@%d' % (url, revision), target])
 
 
 def diff(target):
@@ -41,8 +47,8 @@ def main():
 	for branch in repo.branches:
 		if branch.name in ('master', 'trunk', 'ucsschool', 'ucs') or 'split' in branch.name or 'backup' in branch.name:
 			continue
-		uri = url(branch.name)
-		svn_export(uri, branch.name)
+		uri, revision = url(branch.name)
+		svn_export(uri, branch.name, revision)
 		checkout(branch.name)
 		changes = diff(branch.name)
 		if changes:
