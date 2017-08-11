@@ -5,7 +5,7 @@ source $(dirname "$0")/svn2git_include.sh
 
 function help {
 	echo
- 	echo "$(basename $0) [options] <svnRepo> <authorsFile> 2>&1 | tee git2svn.log"
+	echo "$(basename $0) [options] <svnRepo> <authorsFile> 2>&1 | tee ../ucs2svn.log"
 	echo
 	echo "<svnRepo>        Path to the Univention SVN dev repository"
 	echo "<authorsFile>    Path to the SVN authors file in order to properly map usernames"
@@ -52,6 +52,8 @@ then
 	exit 0
 fi
 
+date
+
 # basic sanity checks
 check_git_repo
 check_authors_file
@@ -72,3 +74,4 @@ rebase ucs-4.0-0 ucs-3.2-2 51102
 
 rewrite_commits_with_author_info
 
+date

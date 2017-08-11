@@ -37,7 +37,7 @@ def main():
 
 	repo = git.Repo()
 	for branch in repo.branches:
-		if branch.name in ('master', 'trunk', 'ucsschool', 'ucs') or 'split' in branch.name:
+		if branch.name in ('master', 'trunk', 'ucsschool', 'ucs') or 'split' in branch.name or 'backup' in branch.name:
 			continue
 		checkout(branch.name)
 		svn_export(url(), branch.name)
