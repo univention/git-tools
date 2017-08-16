@@ -12,15 +12,40 @@ class Branch(object):
 	def __init__(self, name, repo):
 		self.name = name
 		self.commit = repo.commit(name)
-		self.files = dict([(i.path, i) for i in self.commit.tree.traverse() if i.type == 'blob'])
+		self._all_paths = None
+
+	def get_all_paths(self):
+		'''Return all paths of files that have been modified at any point in the history
+		as well as files that are part of the branch's head.'''
+		if self._all_paths is not None:
+			# return cached value
+			return self._all_paths
+
+		# get all files existing at the branch's head
+		self._all_paths = set([i.path for i in self.commit.tree.traverse() if i.type == 'blob'])
+
+		# go back through the commit history and also collect those files that
+		# have been modified in any way
+		self._all_paths.update([ipath for icommit in self.commit.repo.iter_commits(self.commit) for ipath in icommit.stats.files.iterkeys()])
+
+		return self._all_paths
 
 	@property
-	def paths(self):
-		return self.files.keys()
+	def latest_blobs(self):
+		'''Return all blobs of the branch's head commit.'''
+		for iobj in self.commit.tree.traverse():
+			if iobj.type == 'blob':
+				yield iobj
+
+	@property
+	def latest_paths(self):
+		'''Return all file paths of the branch's head commit.'''
+		for iblob in self.latest_blobs:
+			yield iblob.path
 
 	def __str__(self):
 		return '<Branch "%s">' % (self.name, )
-		
+
 	def __repr__(self):
 		return self.__str__()
 
@@ -30,13 +55,13 @@ def main(orig_branch_name, dest_branch_name):
 		repo = git.Repo(search_parent_directories=True)
 	except TypeError:
 		repo = git.Repo()
-	
+
 	# iterate through whole commit tree and find branching points
 	orig_branch = Branch(orig_branch_name, repo)
 	dest_branch = Branch(dest_branch_name, repo)
 
 	# delete files that should do not exist in the original branch 
-	rm_files = set(dest_branch.files.iterkeys()) - set(orig_branch.files.iterkeys())
+	rm_files = set(dest_branch.latest_paths) - set(orig_branch.get_all_paths())
 	for ipath in rm_files:
 		try:
 			print 'removing %s' % (ipath.encode('utf-8'), )
@@ -48,8 +73,10 @@ def main(orig_branch_name, dest_branch_name):
 		print 'No file to remove :) .'
 
 	# adjust the file mode if necessary
-	common_paths = set(orig_branch.paths).intersection(set(dest_branch.paths))
-	common_blobs = [(orig_branch.files[ipath], dest_branch.files[ipath]) for ipath in common_paths]
+	common_paths = set(orig_branch.latest_paths).intersection(set(dest_branch.latest_paths))
+	orig_branch_blobs = dict((iblob.path, iblob) for iblob in orig_branch.latest_blobs)
+	dest_branch_blobs = dict((iblob.path, iblob) for iblob in dest_branch.latest_blobs)
+	common_blobs = [(orig_branch_blobs[ipath], dest_branch_blobs[ipath]) for ipath in common_paths]
 	chmod_files = [(iblob.path, iblob.mode) for iblob, jblob in common_blobs if iblob.mode != jblob.mode]
 	for ipath, imode in chmod_files:
 		print 'chmod %s -> %o' % (ipath.encode('utf-8'), imode)
