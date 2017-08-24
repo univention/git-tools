@@ -4,7 +4,7 @@
 
 import git
 import os
-from subprocess import check_call, check_output, PIPE, STDOUT, Popen, CalledProcessError
+from subprocess import check_call, check_output, PIPE, STDOUT, Popen, CalledProcessError, call
 
 EXPORTS = '../exports'
 
@@ -33,7 +33,16 @@ def svn_export(url, target, revision):
 
 def diff(target):
 	# TODO: git can't have empty directories; they are detected as differing
-	p = Popen(['diff', '-u', '-r', '--exclude', '.git', '.', os.path.join(EXPORTS, target)], stderr=STDOUT, stdout=PIPE)
+	targetdir = os.path.join(EXPORTS, target)
+	process = Popen(['find', '-type', 'f', '-not', '-path', './.git/*', '-printf', r'%m\t%p\n'], stdout=PIPE)
+	process2 = Popen(['find', '-type', 'f', '-printf', r'%m\t%p\n'], stdout=PIPE, cwd=targetdir)
+	pid = os.getpid()
+	process3 = Popen(['diff', '-u0', '/proc/%s/fd/%s' % (pid, process.stdout.fileno(),), '/proc/%s/fd/%s' % (pid, process2.stdout.fileno())])
+	process2.wait()
+	process.wait()
+	process3.communicate()
+
+	p = Popen(['diff', '-u', '-r', '--exclude', '.git', '.', targetdir], stderr=STDOUT, stdout=PIPE)
 	stdout = p.communicate()[0]
 	if p.returncode:
 		return stdout
@@ -56,4 +65,5 @@ def main():
 
 
 if __name__ == '__main__':
+	call('git branch | grep backup | while read ibak; do ibranch=${ibak##*/}; echo "### $ibak $ibranch ###"; git diff --numstat $ibak $ibranch; done', shell=True)
 	main()
