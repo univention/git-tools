@@ -124,8 +124,22 @@ function rebase {
 	"$(dirname $0)/git-rebase-tree" "$split_branch" "$(get_first_commit "$branch")" 
 }
 
+# make sure that committer == author for each commit
 function rewrite_commits_with_author_info {
 	branches=($(git branch -a | sed 's/^[ \*]*//; /backup/d'))
 	git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"; export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"; export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"' "${branches[@]}"
+}
+
+# rename all local branches given a regexp pattern
+function rename_branches {
+	local regexp=$1
+	git for-each-ref --format="%(refname)" refs/heads | sed 's|^refs/heads/||; /^backup/d; /-split$/d;' | (
+		while read branch
+		do
+			new_branch=$(echo "$branch" | sed "$regexp")
+			echo "Renaming branch: $branch -> $new_branch"
+			git branch -m "$branch" "$new_branch"
+		done
+	)
 }
 

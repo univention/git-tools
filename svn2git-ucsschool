@@ -81,5 +81,6 @@ rebase ucsschool-3.2r2b ucsschool-3.2r2 69183
 rebase ucsschool-4.0 ucsschool-3.2r2 54995
 
 rewrite_commits_with_author_info
+rename_branches 's/^ucsschool-//'
 
 date

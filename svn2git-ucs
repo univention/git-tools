@@ -75,5 +75,6 @@ rebase ucs-3.2-2 ucs-3.2-1 49765
 rebase ucs-4.0-0 ucs-3.2-2 51102
 
 rewrite_commits_with_author_info
+rename_branches 's/^ucs-//'
 
 date
