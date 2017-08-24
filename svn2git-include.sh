@@ -117,7 +117,7 @@ function rebase {
 	local backup_branch=$(git branch | sed -n 's/^[\* ]*//g; /backup.*'"$branch"'/p')
 	git checkout "$split_branch"
 	"$(dirname $0)/git-trim-branch" "$backup_branch" "$branch"
-	git commit -a -m "svn2git migration: remove files that have not been branched to $branch"
+	git commit --author='Univention GmbH <packages@univention.de>' -a -m "svn2git migration: remove files that have not been branched to $branch"
 
 	# restore original branch and rebase _all_ connected branches
 	git branch -M "$backup_branch" "$branch"
