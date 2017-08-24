@@ -34,8 +34,8 @@ def svn_export(url, target, revision):
 def diff(target):
 	# TODO: git can't have empty directories; they are detected as differing
 	targetdir = os.path.join(EXPORTS, target)
-	process = Popen(['find', '-type', 'f', '-not', '-path', './.git/*', '-printf', r'%m\t%p\n'], stdout=PIPE)
-	process2 = Popen(['find', '-type', 'f', '-printf', r'%m\t%p\n'], stdout=PIPE, cwd=targetdir)
+	process = Popen(['find', '-type', 'f', '-printf', r'%m\t%p\n'], stdout=PIPE, cwd=targetdir)
+	process2 = Popen(['find', '-type', 'f', '-not', '-path', './.git/*', '-printf', r'%m\t%p\n'], stdout=PIPE)
 	pid = os.getpid()
 	process3 = Popen(['diff', '-u0', '/proc/%s/fd/%s' % (pid, process.stdout.fileno(),), '/proc/%s/fd/%s' % (pid, process2.stdout.fileno())])
 	process2.wait()
