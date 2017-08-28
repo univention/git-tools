@@ -103,7 +103,7 @@ function rebase {
 	local branch=$1
 	local upstream_branch=$2
 	local split_at_svn_rev=$3
-	local split_branch="${upstream_branch}-split"
+	local split_branch="${branch}-split"
 
 	# split off before r22331 and remove deprecated packages
 	split_commit=$(get_preceding_rev $upstream_branch $split_at_svn_rev) 
