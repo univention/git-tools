@@ -65,9 +65,12 @@ check_authors_file
 write_git_config
 git_svn_fetch
 git gc
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/||'
+
+# rebase 3.2 onto 3.1 development
+rebase 1.0/ucs-3.2 1.0/ucs-3.1 48435
 
 # clean up
-create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/||'
 rewrite_commits_with_author_info
 
 date

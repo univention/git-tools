@@ -34,7 +34,8 @@ function write_git_config {
 	fetch = branches/ucs-4.1/ucc-3.0:refs/remotes/svn/3.0
 	fetch = branches/ucs-4.0/ucc-2.1:refs/remotes/svn/2.1
 	fetch = branches/ucs-3.2/ucc:refs/remotes/svn/2.0
-	fetch = branches/{ucs-3.1,ucs-3.0}/ucc:refs/remotes/svn/1.0
+	fetch = branches/ucs-3.1/ucc:refs/remotes/svn/1.0
+	fetch = branches/ucs-3.0/ucc:refs/remotes/svn/1.0-alpha
 EOF
 	git config core.filemode false
 	fi
