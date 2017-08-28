@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# include common functions
+source $(dirname "$0")/svn2git-include.sh
+
+function help {
+	echo
+	echo "$(basename $0) [options] <svnRepo> <authorsFile> 2>&1 | tee ../ucsschool2svn.log"
+	echo
+	echo "<svnRepo>        Path to the Univention SVN dev repository"
+	echo "<authorsFile>    Path to the SVN authors file in order to properly map usernames"
+	echo "                 to real author names."
+	echo  
+	echo "Options:"
+	echo "  -h, --help     Show this help only" 
+	echo 
+	echo "Checkout the UCS@school SVN repository via git-svn including rebasing branches"
+	echo "for a continuous commit history."
+	echo
+}
+
+function write_git_config {
+	# only add the git-svn configuration in case it has not already been specified
+	if ! grep -q svn-remote .git/config
+	then
+		cat >> .git/config <<EOF
+[svn]
+    authorsfile = $AUTHORS_FILE
+    rmdir = true
+[svn-remote "svn"]
+	preserve-empty-dirs = true
+	placeholder-filename = .git_keep_empty_dir
+    url = $SVN
+	fetch = branches/ucs-4.1/ucc-3.0:refs/remotes/svn/3.0
+	fetch = branches/ucs-4.0/ucc-2.1:refs/remotes/svn/2.1
+	fetch = branches/ucs-3.2/ucc:refs/remotes/svn/2.0
+	fetch = branches/{ucs-3.1,ucs-3.0}/ucc:refs/remotes/svn/1.0
+EOF
+	git config core.filemode false
+	fi
+}
+
+
+
+SVN="$1"
+AUTHORS_FILE="$2"
+
+if [ "$1" = "-h" -o "$1" = "--help" -o "$#" != 2 ]
+then
+	help
+	exit 0
+fi
+
+date
+
+# basic sanity checks
+check_git_repo
+check_authors_file
+
+# checkout of repository via git-svn
+write_git_config
+git_svn_fetch
+git gc
+
+# clean up
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/||'
+rewrite_commits_with_author_info
+
+date
