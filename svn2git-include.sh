@@ -107,7 +107,7 @@ function rebase {
 
 	# remove all files that should not be copied to <branch>.
 	# ... use git ls-tree with option "-z" to avoid encoding problems
-	local backup_branch=$(git branch | sed -n 's/^[\* ]*//g; /backup.*'"$branch"'/p')
+	local backup_branch=$(git for-each-ref --format="%(refname)" refs/heads/backup | sed -n "s|refs/heads/\(.*/${branch}\)|\1|p")
 	git checkout "$split_branch"
 	"$(dirname $0)/git-trim-branch" "$backup_branch" "$branch"
 	git commit --author='Univention GmbH <packages@univention.de>' -a -m "svn2git migration: remove files that have not been branched to $branch"
