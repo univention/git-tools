@@ -79,10 +79,10 @@ function create_local_branches {
 	local branch_name_mapping=$2
 	local ignore_paths=${3:-/^$/d}  # default: ignore empty lines
 
-	git for-each-ref --format="%(refname)" | sed "$ignore_paths" | (
+	git for-each-ref --format="%(refname)" "$refs_path" | sed "$ignore_paths" | (
 		while read remote_branch
 		do
-			local_branch=$(echo "$local_branch" | sed "$branch_name_mapping")
+			local_branch=$(echo "$remote_branch" | sed "$branch_name_mapping")
 			git checkout -b "$local_branch" "$remote_branch"
 		done
 	)
