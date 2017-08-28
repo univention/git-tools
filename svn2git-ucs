@@ -64,7 +64,7 @@ check_authors_file
 write_git_config
 git_svn_fetch
 git gc
-create_local_branches ucs trunk master
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/\(ucs-\)\?||'
 
 # Note that some packages have been moved from internal (e.g., ucslint) into 3.0
 # while other packages have been moved from components (e.g., nagios). This

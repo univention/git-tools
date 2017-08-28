@@ -75,21 +75,14 @@ function git_svn_fetch {
 # creates local branches using the function parameters as patterns
 # which are passed over to 'grep' 
 function create_local_branches {
-	# build together grep command of the form: 'grep -e param1 -e param2 ...' 
-	cmd=("grep")
-	let i=1
-	for param in "$@"
-	do
-		cmd[i]="-e"
-		cmd[i+1]="$param"
-		let i+=2
-	done
+	local refs_path=$1
+	local branch_name_mapping=$2
+	local ignore_paths=${3:-/^$/d}  # default: ignore empty lines
 
-	# create copies of SVN branches, but ignore branches containing the character '@'
-	git branch -a | "${cmd[@]}" | grep -v '@' | (
+	git for-each-ref --format="%(refname)" | sed "$ignore_paths" | (
 		while read remote_branch
 		do
-			local_branch=${remote_branch##*/}
+			local_branch=$(echo "$local_branch" | sed "$branch_name_mapping")
 			git checkout -b "$local_branch" "$remote_branch"
 		done
 	)

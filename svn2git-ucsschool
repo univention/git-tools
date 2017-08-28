@@ -73,6 +73,7 @@ write_git_config
 git_svn_fetch
 git gc
 create_local_branches ucsschool master trunk
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/\(ucsschool-\)\?||' '/@[0-9]\+$/d' 
 
 # rebase subtrees to obtain linear history
 rebase ucsschool-2.2 trunk 10132
