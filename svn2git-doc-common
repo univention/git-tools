@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# include common functions
+source $(dirname "$0")/svn2git-include.sh
+
+function write_git_config {
+	# only add the git-svn configuration in case it has not already been specified
+	if ! grep -q svn-remote .git/config
+	then
+		cat >> .git/config <<EOF
+[svn]
+    authorsfile = $AUTHORS_FILE
+    rmdir = true
+[svn-remote "svn"]
+	preserve-empty-dirs = true
+	placeholder-filename = .git_keep_empty_dir
+    url = $SVN
+	fetch = trunk/doc-common:refs/remotes/svn/trunk
+	fetch = branches/ucs-4.2/doc-common:refs/remotes/svn/4.2
+	fetch = branches/ucs-4.1/doc-common:refs/remotes/svn/4.1
+	fetch = branches/ucs-4.0/doc-common:refs/remotes/svn/4.0
+	fetch = branches/ucs-3.2/doc-common:refs/remotes/svn/3.2
+	fetch = branches/ucs-3.1/doc-common:refs/remotes/svn/3.1
+EOF
+	git config core.filemode false
+	fi
+}
+
+
+SVN="$1"
+AUTHORS_FILE="$2"
+
+# basic sanity checks
+check_args "$@"
+check_git_repo
+check_authors_file
+date
+
+# checkout of repository via git-svn
+write_git_config
+git_svn_fetch
+git gc
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/||'
+
+# clean up
+rewrite_commits_with_author_info
+
+# merge trunk and latest 4.2 version branch together
+git branch -D master
+git checkout trunk
+EDITOR=touch VISUAL=touch git merge 4.2
+
+date
