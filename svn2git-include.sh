@@ -119,7 +119,7 @@ function rebase {
 
 # make sure that committer == author for each commit
 function rewrite_commits_with_author_info {
-	branches=($(git branch -a | sed 's/^[ \*]*//; /backup/d'))
+	branches=($(git for-each-ref --format="%(refname)" refs/heads | sed '/refs\/heads\/backup/d; s|refs/heads/||'))
 	git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"; export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"; export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"' "${branches[@]}"
 }
 
