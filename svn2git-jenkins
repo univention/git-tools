@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# include common functions
+source $(dirname "$0")/svn2git-include.sh
+
+function write_git_config {
+	# only add the git-svn configuration in case it has not already been specified
+	if ! grep -q svn-remote .git/config
+	then
+		cat >> .git/config <<EOF
+[svn]
+    authorsfile = $AUTHORS_FILE
+    rmdir = true
+[svn-remote "svn"]
+	preserve-empty-dirs = true
+	placeholder-filename = .git_keep_empty_dir
+    url = $SVN
+	fetch = trunk/jenkins:refs/remotes/svn/master
+EOF
+	git config core.filemode false
+	fi
+}
+
+
+SVN="$1"
+AUTHORS_FILE="$2"
+
+# basic sanity checks
+check_args "$@"
+check_git_repo
+check_authors_file
+date
+
+# checkout of repository via git-svn
+write_git_config
+git_svn_fetch
+git gc
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/||'
+
+# remove obsolete directories
+git filter-branch -f --prune-empty --tree-filter 'rm -rf ucs-ec2-tools vnc-automate python-vnc-automate' master 
+
+# clean up
+rewrite_commits_with_author_info
+
+date
