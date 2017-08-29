@@ -73,13 +73,12 @@ create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/\(ucs-\)\?||'
 # Note that some packages have been moved from internal (e.g., ucslint) into 3.0
 # while other packages have been moved from components (e.g., nagios). This
 # history will not be kept in git.
-rebase ucs-3.0 ucs-2.4 22331 
-rebase ucs-3.2-0 ucs-3.1-2 41107
-rebase ucs-3.2-2 ucs-3.2-1 49765
-rebase ucs-4.0-0 ucs-3.2-2 51102
+rebase 3.0 2.4 22331 
+rebase 3.2-0 3.1-2 41107
+rebase 3.2-2 3.2-1 49765
+rebase 4.0-0 3.2-2 51102
 
 rewrite_commits_with_author_info
-rename_branches 's/^ucs-//'
 
 fetch_tags
 

@@ -53,12 +53,11 @@ create_local_branches ucsschool master trunk
 create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/\(ucsschool-\)\?||' '/@[0-9]\+$/d' 
 
 # rebase subtrees to obtain linear history
-rebase ucsschool-2.2 trunk 10132
-rebase ucsschool-3.0 ucsschool-2.4 30163
-rebase ucsschool-3.2r2b ucsschool-3.2r2 69183
-rebase ucsschool-4.0 ucsschool-3.2r2 54995
+rebase 2.2 trunk 10132
+rebase 3.0 2.4 30163
+rebase 3.2r2b 3.2r2 69183
+rebase 4.0 3.2r2 54995
 
 rewrite_commits_with_author_info
-rename_branches 's/^ucsschool-//'
 
 date
