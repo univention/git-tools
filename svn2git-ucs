@@ -3,22 +3,6 @@
 # include common functions
 source $(dirname "$0")/svn2git-include.sh
 
-function help {
-	echo
-	echo "$(basename $0) [options] <svnRepo> <authorsFile> 2>&1 | tee ../ucs2svn.log"
-	echo
-	echo "<svnRepo>        Path to the Univention SVN dev repository"
-	echo "<authorsFile>    Path to the SVN authors file in order to properly map usernames"
-	echo "                 to real author names."
-	echo  
-	echo "Options:"
-	echo "  -h, --help     Show this help only" 
-	echo 
-	echo "Checkout the UCS SVN repository via git-svn including rebasing branches"
-	echo "for a continuous commit history."
-	echo
-}
-
 function write_git_config {
 	# only add the git-svn configuration in case it has not already been specified
 	if ! grep -q svn-remote .git/config
@@ -70,20 +54,15 @@ function fetch_tags {
 	)
 }
 
+
 SVN="$1"
 AUTHORS_FILE="$2"
 
-if [ "$1" = "-h" -o "$1" = "--help" -o "$#" != 2 ]
-then
-	help
-	exit 0
-fi
-
-date
-
 # basic sanity checks
+check_args
 check_git_repo
 check_authors_file
+date
 
 # initial checkout of UCS repository via git-svn
 write_git_config

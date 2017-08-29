@@ -1,10 +1,34 @@
 #!/bin/bash
 
+function help {
+	echo
+	echo "$(basename $0) [options] <svnRepo> <authorsFile> 2>&1 | tee ../ucsschool2svn.log"
+	echo
+	echo "<svnRepo>        Path to the Univention SVN dev repository"
+	echo "<authorsFile>    Path to the SVN authors file in order to properly map usernames"
+	echo "                 to real author names."
+	echo  
+	echo "Options:"
+	echo "  -h, --help     Show this help only" 
+	echo 
+	echo "Checkout the UCS@school SVN repository via git-svn including rebasing branches"
+	echo "for a continuous commit history."
+	echo
+}
+
 function error {
 	echo
 	echo "ERROR: $1"
 	echo
 	exit 1
+}
+
+function check_args {
+	if [ "$1" = "-h" -o "$1" = "--help" -o "$#" != 2 ]
+	then
+		help
+		exit 0
+	fi
 }
 
 function check_authors_file {
