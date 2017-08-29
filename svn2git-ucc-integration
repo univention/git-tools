@@ -33,7 +33,7 @@ SVN="$1"
 AUTHORS_FILE="$2"
 
 # basic sanity checks
-check_args
+check_args "$@"
 check_git_repo
 check_authors_file
 date
