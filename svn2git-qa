@@ -65,5 +65,5 @@ def main():
 
 
 if __name__ == '__main__':
-	call('git branch | grep backup | while read ibak; do ibranch=${ibak##*/}; ibranch="$(echo "$ibranch" | sed "s/ucs-//g; s/ucsschool-//g;" )"; echo "### $ibak $ibranch ###"; git diff --numstat $ibak $ibranch; done', shell=True)
+	call('git branch | grep backup | while read ibak; do ibranch=${ibak##*/}; echo "### $ibak $ibranch ###"; git diff --numstat $ibak $ibranch; done', shell=True)
 	main()
