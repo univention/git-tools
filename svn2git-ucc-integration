@@ -12,8 +12,6 @@ function write_git_config {
     authorsfile = $AUTHORS_FILE
     rmdir = true
 [svn-remote "svn"]
-	preserve-empty-dirs = true
-	placeholder-filename = .git_keep_empty_dir
     url = $SVN
 	fetch = branches/ucs-4.2/ucc-3.0-integration:refs/remotes/svn/3.0/ucs-4.2
 	fetch = branches/ucs-4.1/ucc-3.0-integration:refs/remotes/svn/3.0/ucs-4.1
