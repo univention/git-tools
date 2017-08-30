@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# include common functions
+source $(dirname "$0")/svn2git-include.sh
+
+function write_git_config {
+	# only add the git-svn configuration in case it has not already been specified
+	if ! grep -q svn-remote .git/config
+	then
+		cat >> .git/config <<EOF
+[svn]
+    authorsfile = $AUTHORS_FILE
+    rmdir = true
+[svn-remote "svn"]
+    url = $SVN
+	fetch = trunk/jenkins/ucs-ec2-tools:refs/remotes/svn/trunk
+	fetch = branches/ucs-4.1/ucs-4.1-2/test/ucs-ec2-tools:refs/remotes/svn/4.1-2
+	fetch = branches/ucs-4.1/ucs-4.1-1/test/ucs-ec2-tools:refs/remotes/svn/4.1-1
+	fetch = branches/ucs-4.1/ucs-4.1-0/test/ucs-ec2-tools:refs/remotes/svn/4.1-0
+	fetch = branches/ucs-4.0/ucs-4.0-2/test/ucs-ec2-tools:refs/remotes/svn/4.0-2
+	fetch = branches/ucs-4.0/ucs-4.0-1/test/ucs-ec2-tools:refs/remotes/svn/4.0-1
+	fetch = branches/ucs-4.0/ucs-4.0-0/test/ucs-ec2-tools:refs/remotes/svn/4.0-0
+	fetch = branches/ucs-3.2/ucs-3.2-2/test/ucs-ec2-tools:refs/remotes/svn/3.2-2
+	fetch = branches/ucs-3.2/ucs-3.2-1/test/ucs-ec2-tools:refs/remotes/svn/3.2-1
+	fetch = branches/ucs-3.2/ucs-3.2-0/test/ucs-ec2-tools:refs/remotes/svn/3.2-0
+	fetch = branches/ucs-3.1/ucs-3.1-2/test/ucs-ec2-tools:refs/remotes/svn/3.1-2
+	fetch = branches/ucs-3.1/ucs-3.1-1/test/ucs-ec2-tools:refs/remotes/svn/3.1-1
+EOF
+	git config core.filemode false
+	fi
+}
+
+
+SVN="$1"
+AUTHORS_FILE="$2"
+
+# basic sanity checks
+check_args "$@"
+check_git_repo
+check_authors_file
+date
+
+# checkout of repository via git-svn
+write_git_config
+git_svn_fetch
+git gc
+create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/||'
+
+# clean up
+rewrite_commits_with_author_info
+
+date
