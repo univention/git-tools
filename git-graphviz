@@ -8,6 +8,47 @@ import subprocess
 import sys
 from tempfile import NamedTemporaryFile
 
+NULL_HEXSHA = '0000000000000000000000000000000000000000'
+
+
+class CommitSeries(object):
+	def __init__(self, commit, commits=None, parents=None):
+		self.hexsha, self.label = commit.name_rev.split()
+		self._commit = commit
+		self.commits = commits or []
+		self.parents = parents or []
+
+	def write_node(self, fp):
+		fp.write('"{hexsha}"[label="{label} [{num}]"];\n'.format(hexsha=self.hexsha, label=self.label, num=len(self.commits)))
+
+	def write_vertices(self, fp):
+		for iparent in self.parents:
+			fp.write('"{current}"->"{parent}";\n'.format(current=self.hexsha, parent=iparent.hexsha))
+
+	def traverse_until_branching_point(self, childs_per_commit):
+		icommit = self._commit
+		while True:
+			h, l = icommit.name_rev.split()
+			if childs_per_commit.get(icommit.hexsha, 0) > 1 and len(self.commits) > 0:
+				# the current commit has multiple childs...
+				# stop traversal and return the current commit
+				return [icommit]
+
+			# add commit to series and continue traversal
+			self.commits.append(icommit.hexsha)
+
+			if len(icommit.parents) == 0:
+				# history ends here... stop traversal
+				return []
+			if len(icommit.parents) > 1:
+				# the linear series ends here...
+				# stop traversal and return all parents of current commit
+				return icommit.parents
+
+			# iterate to the next parent commit
+			icommit = icommit.parents[0]
+
+
 def get_branch_commits(repo, branch_names):
 	if len(branch_names):
 		# try to take the specified branches
@@ -38,28 +79,7 @@ def get_childs_per_commit(branch_commits):
 	return childs_per_commit
 
 
-def find_last_commit_of_sub_branch(branch_hexshas, childs_per_commit, commit):
-	if not commit.parents:
-		return (commit, 1)
-	last_commit = commit
-	commit = commit.parents[0]
-	n = 1
-	while True:
-		# break conditions
-		if commit.hexsha in branch_hexshas:
-			return (last_commit, n)
-		if not commit.parents:
-			return (commit, n + 1)
-		if childs_per_commit[commit.hexsha] != 1:
-			return (last_commit, n)
-
-		# go to next commit in the past
-		n += 1
-		last_commit = commit
-		commit = commit.parents[0]
-
-
-def create_graphviz_file(branch_names):
+def compute_commit_series(branch_names):
 	try:
 		repo = git.Repo(search_parent_directories=True)
 	except TypeError:
@@ -68,31 +88,47 @@ def create_graphviz_file(branch_names):
 	# iterate over all sub branches and print graphviz representation
 	branch_commits = get_branch_commits(repo, branch_names)
 	print 'Found %d branch(es) to plot.' % (len(branch_commits), )
-	branch_hexshas = set([i.hexsha for i in branch_commits])
+
 	print 'Detecting branching points (that might take a moment)...' 
 	childs_per_commit = get_childs_per_commit(branch_commits)
-	vertices_added = set()
-	print 'Iterating through branches and their commits...'
-	istep = 0
+	
+	print 'Iterating through branches and re-group linear series of commits...'
+	not_visited_commits = set(childs_per_commit.iterkeys())
+	ncommits = len(not_visited_commits)
+	commit_series_stack = [CommitSeries(icommit) for icommit in branch_commits]
+	commit_series_final = {}
+	while commit_series_stack:
+		# update progress information
+		sys.stdout.write('\rPorcessed commits: %d/%d' % (ncommits - len(not_visited_commits), ncommits))
+		sys.stdout.flush()
+
+		# process next series
+		iseries = commit_series_stack.pop(0)
+		if iseries.hexsha in commit_series_final:
+			continue
+		next_commits = iseries.traverse_until_branching_point(childs_per_commit)
+		commit_series_final[iseries.hexsha] = iseries
+
+		# add new series starting points to stack
+		for jcommit in next_commits:
+			jseries = CommitSeries(jcommit)
+			commit_series_stack.append(jseries)
+
+			# register series as parent of previous series
+			iseries.parents.append(jseries)
+
+		# update number of visisted commits
+		not_visited_commits -= set(iseries.commits)
+
+	return commit_series_final.values()
+
+
+def create_graphviz_file(series):
 	with NamedTemporaryFile(delete=False) as fp:
 		fp.write('digraph G {\n')
-		for icommit in branch_commits:
-			sys.stdout.write('\r(Branch %d/%d)' % (istep, len(branch_commits)))
-			sys.stdout.flush()
-			istep += 1
-			while icommit.parents:
-				last_commit, n = find_last_commit_of_sub_branch(branch_hexshas, childs_per_commit, icommit)
-				isha, iname = icommit.name_rev.split()
-				fp.write('"{sha}"[label="{label} [{num}]"];\n'.format(sha=isha, label=iname, num=n))
-				if last_commit.parents:
-					iparent = last_commit.parents[0]
-					vertex = (isha, iparent.hexsha)
-					if vertex not in vertices_added:
-						fp.write('"{current}"->"{parent}";\n'.format(current=isha, parent=iparent.hexsha))
-						vertices_added.add(vertex)
-					icommit = iparent
-				else:
-					break
+		for iseries in series:
+			iseries.write_node(fp)
+			iseries.write_vertices(fp)
 		fp.write('}\n')
 	print
 	print 'Done :)'
@@ -104,7 +140,8 @@ def plot_svg_file(in_file, out_file):
 
 
 def main(out_file, branches):
-	graphviz_file = create_graphviz_file(branches)
+	commit_series = compute_commit_series(branches)
+	graphviz_file = create_graphviz_file(commit_series)
 	plot_svg_file(graphviz_file, out_file)
 	os.unlink(graphviz_file)
 
