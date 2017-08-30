@@ -25,12 +25,16 @@ class CommitSeries(object):
 		for iparent in self.parents:
 			fp.write('"{current}"->"{parent}";\n'.format(current=self.hexsha, parent=iparent.hexsha))
 
-	def traverse_until_branching_point(self, childs_per_commit):
+	def traverse_until_branching_point(self, childs_per_commit, series_first_commits):
 		icommit = self._commit
 		while True:
 			h, l = icommit.name_rev.split()
 			if childs_per_commit.get(icommit.hexsha, 0) > 1 and len(self.commits) > 0:
 				# the current commit has multiple childs...
+				# stop traversal and return the current commit
+				return [icommit]
+			if icommit.hexsha in series_first_commits and len(self.commits) > 0:
+				# the current commit is the starting point of an already existing series
 				# stop traversal and return the current commit
 				return [icommit]
 
@@ -99,14 +103,16 @@ def compute_commit_series(branch_names):
 	commit_series_final = {}
 	while commit_series_stack:
 		# update progress information
-		sys.stdout.write('\rPorcessed commits: %d/%d' % (ncommits - len(not_visited_commits), ncommits))
+		sys.stdout.write('\rProcessed commits: %d/%d' % (ncommits - len(not_visited_commits), ncommits))
 		sys.stdout.flush()
 
 		# process next series
 		iseries = commit_series_stack.pop(0)
 		if iseries.hexsha in commit_series_final:
 			continue
-		next_commits = iseries.traverse_until_branching_point(childs_per_commit)
+
+		series_first_commits = set(commit_series_final.iterkeys()) | set([i.hexsha for i in commit_series_stack])
+		next_commits = iseries.traverse_until_branching_point(childs_per_commit, series_first_commits)
 		commit_series_final[iseries.hexsha] = iseries
 
 		# add new series starting points to stack
