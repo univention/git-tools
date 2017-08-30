@@ -121,6 +121,7 @@ function rebase {
 	local upstream_branch=$2
 	local split_at_svn_rev=$3
 	local split_branch="${branch}-split"
+	local cmd_after_split=$4
 
 	# split off before r22331 and remove deprecated packages
 	split_commit=$(get_preceding_rev $upstream_branch $split_at_svn_rev) 
@@ -135,6 +136,12 @@ function rebase {
 	git checkout "$split_branch"
 	"$(dirname $0)/git-trim-branch" "$backup_branch" "$branch"
 	git commit --author='Univention GmbH <packages@univention.de>' -a -m "svn2git migration: remove files that have not been branched to $branch"
+
+	# execute an optionally specified command
+	if [ -n "$cmd_after_split" ]
+	then
+		$cmd_after_split
+	fi
 
 	# restore original branch and rebase _all_ connected branches
 	git branch -M "$backup_branch" "$branch"

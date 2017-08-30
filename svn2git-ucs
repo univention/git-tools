@@ -52,6 +52,17 @@ function fetch_tags {
 	)
 }
 
+# fix some permissions that are not correctly respected during the migration
+function fix_ucs30_permissions {
+	chmod +x ./management/univention-directory-manager-module-example/scripts/ip-phone-tool
+	chmod -x ./management/univention-directory-manager-modules/modules/univention/admin/__init__.py
+	chmod -x ./management/univention-directory-manager-modules/modules/univention/admin/cron.py
+	chmod -x ./management/univention-directory-manager-modules/modules/univention/admin/modules.py
+	chmod +x ./base/univention-config-registry/python/univention-install-config-registry-info
+	chmod +x ./base/univention-config-registry/scripts/univention-check-templates
+	git commit --author='Univention GmbH <packages@univention.de>' -a -m "svn2git migration: explicitely fix some file permissions"
+}
+
 
 SVN="$1"
 AUTHORS_FILE="$2"
@@ -71,7 +82,7 @@ create_local_branches refs/remotes/svn/ 's|refs/remotes/svn/\(ucs-\)\?||'
 # Note that some packages have been moved from internal (e.g., ucslint) into 3.0
 # while other packages have been moved from components (e.g., nagios). This
 # history will not be kept in git.
-rebase 3.0 2.4 22331 
+rebase 3.0 2.4 22331 fix_ucs30_permissions
 rebase 3.2-0 3.1-2 41107
 rebase 3.2-2 3.2-1 49765
 rebase 4.0-0 3.2-2 51102
