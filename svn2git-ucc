@@ -19,7 +19,7 @@ function write_git_config {
 	fetch = branches/ucs-3.1/ucc:refs/remotes/svn/1.0
 	fetch = branches/ucs-3.0/ucc:refs/remotes/svn/1.0-alpha
 EOF
-	git config core.filemode false
+	git config core.filemode true
 	fi
 }
 

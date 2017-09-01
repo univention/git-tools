@@ -15,7 +15,7 @@ function write_git_config {
     url = $SVN
 	fetch = trunk/jenkins/vnc-automate:refs/remotes/svn/master
 EOF
-	git config core.filemode false
+	git config core.filemode true
 	fi
 }
 

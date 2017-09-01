@@ -8,7 +8,6 @@ function write_git_config {
 	if ! grep -q svn-remote .git/config
 	then
 		cat >> .git/config <<EOF
-    filemode = false
 [svn]
     authorsfile = $AUTHORS_FILE
     rmdir = true
@@ -24,7 +23,7 @@ function write_git_config {
     branches = branches/ucs-4.2/{ucs-4.2-0,ucs-4.2-1}:refs/remotes/svn/*
 EOF
 	fi
-#	git config core.filemode false
+	git config core.filemode true
 }
 
 function fetch_tags {

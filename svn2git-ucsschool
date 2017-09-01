@@ -29,7 +29,7 @@ function write_git_config {
     fetch = branches/ucs-4.1/ucs-school-4.1r2:refs/remotes/svn/ucsschool-4.1r2
     fetch = branches/ucs-4.2/ucs-school-4.2:refs/remotes/svn/ucsschool-4.2
 EOF
-	git config core.filemode false
+	git config core.filemode true
 	fi
 }
 
