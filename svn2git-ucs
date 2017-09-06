@@ -38,8 +38,9 @@ function fetch_tags {
 				icommit=$(get_preceding_rev "$ibranch" "$irev" 2> /dev/null)
 				if [ -n "$icommit" ]
 				then
-					echo "Tagging: $itag -> $icommit"
-					git tag "$itag" "$icommit"
+					jtag="${itag/ucs-/}"
+					echo "Tagging: $jtag -> $icommit"
+					git tag "$jtag" "$icommit"
 					break
 				fi
 			done
